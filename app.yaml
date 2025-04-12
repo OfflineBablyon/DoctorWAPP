@@ -1,0 +1,16 @@
+name: doctorwapp-api
+services:
+- name: web
+  github:
+    branch: main
+    deploy_on_push: true
+  build_command: npm install && npm run build
+  run_command: npm start
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: DATABASE_URL
+    value: ${DATABASE_URL}
+  http_port: 3000
+  instance_count: 1
+  instance_size_slug: basic-xs 

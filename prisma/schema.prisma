@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model provider {
+  npi                   String              @id
+  provider_type         String?
+  provider_name         String?
+  first_name            String?
+  last_name             String?
+  organization_name     String?
+  primary_taxonomy      String?
+  primary_taxonomy_desc String?
+  address_1             String?
+  address_2             String?
+  city                  String?
+  state                 String?
+  postal_code           String?
+  country_code          String?
+  phone                 String?
+  email                 String?
+  direct_address        String?
+  fhir_endpoint         String?
+  enumeration_date      String?
+  last_updated          String?
+  status                String?
+  year_of_practice      Int?
+  medicareServices      medicare_service[]
+  taxonomies            provider_taxonomy[]
+
+  @@index([enumeration_date], map: "idx_enumeration_date")
+  @@index([provider_name], map: "idx_provider_name")
+  @@index([state], map: "idx_provider_state")
+  @@index([primary_taxonomy], map: "idx_provider_taxonomy")
+  @@index([city], map: "idx_providers_city")
+  @@index([city(ops: raw("gin_trgm_ops"))], map: "idx_providers_city_trgm", type: Gin)
+  @@index([provider_name(ops: raw("gin_trgm_ops"))], map: "idx_providers_name_trgm", type: Gin)
+  @@index([primary_taxonomy, provider_type, state], map: "idx_providers_taxonomy_type_state")
+  @@map("providers")
+}
+
+model provider_taxonomy {
+  id               Int       @id @default(autoincrement())
+  npi              String?
+  taxonomy_code    String?
+  taxonomy_desc    String?
+  primary_taxonomy Boolean?
+  license          String?
+  provider         provider? @relation(fields: [npi], references: [npi], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([npi], map: "idx_taxonomy_npi")
+  @@map("provider_taxonomies")
+}
+
+model medicare_service {
+  id                Int       @id @default(autoincrement())
+  npi               String?
+  hcpcs_code        String?
+  hcpcs_description String?
+  service_count     Decimal?  @db.Decimal
+  beneficiary_count Decimal?  @db.Decimal
+  submitted_charge  Decimal?  @db.Decimal
+  allowed_amount    Decimal?  @db.Decimal
+  payment_amount    Decimal?  @db.Decimal
+  service_year      Int?
+  place_of_service  String?
+  provider          provider? @relation(fields: [npi], references: [npi], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([hcpcs_code], map: "idx_medicare_hcpcs")
+  @@index([npi], map: "idx_medicare_npi")
+  @@index([npi, payment_amount], map: "idx_medicare_services_npi_amount")
+  @@index([npi, service_count], map: "idx_medicare_services_npi_count")
+  @@map("medicare_services")
+}
+
+model taxonomy_reference {
+  code           String  @id
+  description    String
+  grouping       String?
+  classification String?
+  specialization String?
+  definition     String?
+
+  @@index([code], map: "idx_taxonomy_code")
+  @@map("taxonomy_reference")
+}
+
+model taxonomies {
+  taxonomy_code           String  @id
+  taxonomy_description    String?
+  taxonomy_group          String?
+  taxonomy_classification String?
+  taxonomy_specialization String?
+}
