@@ -1,12 +1,20 @@
 openapi: 3.0.0
 info:
-  title: MediFind API
-  description: A comprehensive healthcare provider search API that enables users to find and verify medical professionals across the United States.
+  title: HealthProvider Data API
+  description: |
+    A comprehensive healthcare provider search API that enables users to find and verify medical professionals across the United States.
+    
+    ## Core Features
+    - **Provider Search**: Find healthcare providers by name, location, specialty, or provider type
+    - **Provider Details**: Get comprehensive information including contact details and Medicare data
+    - **Filter Options**: Access standardized filters for consistent searches
+    
+    For questions or support, please contact our team at support@healthproviderdata.api
   version: 1.0.0
   contact:
     name: API Support
     url: https://docapi-uax3j.ondigitalocean.app
-    email: support@medifind.com
+    email: support@healthproviderdata.api
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -14,12 +22,14 @@ info:
 servers:
   - url: https://docapi-uax3j.ondigitalocean.app
     description: Production server
+  - url: http://localhost:3000
+    description: Local development server
 
 tags:
   - name: Health
     description: Health check endpoints
   - name: Providers
-    description: Provider search and details
+    description: Provider search and details endpoints
 
 paths:
   /health:
@@ -27,7 +37,7 @@ paths:
       tags:
         - Health
       summary: Health check
-      description: Check if the API is running
+      description: Check if the API and database are running
       operationId: getHealth
       responses:
         '200':
@@ -40,152 +50,154 @@ paths:
                   status:
                     type: string
                     example: ok
+                  database:
+                    type: string
+                    example: connected
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-01-01T12:00:00Z"
+                  environment:
+                    type: string
+                    example: production
+                  version:
+                    type: string
+                    example: v1
 
   /api/providers/search:
     get:
       tags:
         - Providers
       summary: Search providers
-      description: Search for healthcare providers with various filters
+      description: |
+        Search for healthcare providers with various filters. Results are paginated and sorted by provider name.
+        
+        **Example use cases:**
+        - Find all cardiologists in California
+        - Search for a specific doctor by name
+        - Find organizations that accept Medicare in New York
       operationId: searchProviders
       parameters:
         - name: query
           in: query
-          description: Search term for provider name or organization
+          description: Search term for provider name or organization name
           required: false
           schema:
             type: string
+          example: "Smith"
         - name: state
           in: query
-          description: Filter by state
+          description: Filter by state code (e.g., CA, NY, TX)
           required: false
           schema:
             type: string
+          example: "CA"
         - name: specialty
           in: query
-          description: Filter by primary taxonomy code
+          description: Filter by taxonomy code (available from the /filters endpoint)
           required: false
           schema:
             type: string
+          example: "207R00000X"
         - name: provider_type
           in: query
           description: Filter by provider type (1 = Individual, 2 = Organization)
           required: false
           schema:
-            type: integer
-            enum: [1, 2]
+            type: string
+            enum: ["1", "2"]
+          example: "1"
         - name: has_medicare
           in: query
-          description: Filter to show only providers who accept Medicare
+          description: Filter to show only providers with Medicare data
           required: false
           schema:
             type: boolean
-            example: true
-        - name: top_services
-          in: query
-          description: Include the provider's most common Medicare services in the results
-          required: false
-          schema:
-            type: boolean
-            example: true
-        - name: min_services
-          in: query
-          description: Filter providers who have performed at least this many Medicare services
-          required: false
-          schema:
-            type: integer
-            example: 100
-        - name: min_revenue
-          in: query
-          description: Filter providers with at least this amount in Medicare payments (in dollars)
-          required: false
-          schema:
-            type: number
-            example: 50000
-        - name: min_beneficiaries
-          in: query
-          description: Filter providers who have treated at least this many Medicare patients
-          required: false
-          schema:
-            type: integer
-            example: 50
-        - name: service_code
-          in: query
-          description: Filter providers who perform a specific Medicare service (HCPCS code)
-          required: false
-          schema:
-            type: string
-            example: "99213"
-        - name: services
-          in: query
-          description: Filter providers who perform any of these Medicare services (comma-separated HCPCS codes)
-          required: false
-          schema:
-            type: string
-            example: "99213,99214,99215"
-        - name: min_service_count
-          in: query
-          description: Filter providers who have performed a service at least this many times
-          required: false
-          schema:
-            type: integer
-            example: 50
-        - name: min_service_revenue
-          in: query
-          description: Filter providers who have earned at least this amount from a specific service (in dollars)
-          required: false
-          schema:
-            type: number
-            example: 25000
+          example: true
         - name: page
           in: query
-          description: Page number
+          description: Page number for pagination
           required: false
           schema:
             type: integer
             default: 1
+            minimum: 1
+          example: 1
         - name: limit
           in: query
-          description: Number of results per page
+          description: Number of results per page (max 100)
           required: false
           schema:
             type: integer
             default: 10
+            minimum: 1
+            maximum: 100
+          example: 10
       responses:
         '200':
-          description: Successful operation
+          description: Successful search results
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
+              example:
+                providers:
+                  - npi: "1234567890"
+                    provider_name: "JOHN A SMITH MD"
+                    first_name: "JOHN"
+                    last_name: "SMITH"
+                    organization_name: null
+                    provider_type: "1"
+                    address:
+                      line1: "123 MAIN ST"
+                      line2: "SUITE 100"
+                      city: "SAN FRANCISCO"
+                      state: "CA"
+                      postal_code: "94102"
+                      country_code: "US"
+                    phone: "4155551234"
+                    status: "A"
+                total: 50
+                page: 1
+                limit: 10
         '400':
           description: Invalid input
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '408':
+          description: Request timeout (complex queries)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Request Timeout"
+                message: "Query took too long to process. Please simplify your search criteria."
 
   /api/providers/{npi}:
     get:
       tags:
         - Providers
       summary: Get provider details
-      description: Get detailed information about a specific provider
+      description: |
+        Get detailed information about a specific provider by NPI number. 
+        
+        This endpoint returns comprehensive data including:
+        - Contact information
+        - Taxonomy/specialty information
+        - Medicare service data (when available)
       operationId: getProviderDetails
       parameters:
         - name: npi
           in: path
-          description: Provider's NPI number
+          description: National Provider Identifier (10-digit number)
           required: true
           schema:
             type: string
-        - name: include_medicare
-          in: query
-          description: Include Medicare service data
-          required: false
-          schema:
-            type: boolean
-            default: true
+            pattern: '^\d{10}$'
+          example: "1234567890"
       responses:
         '200':
           description: Successful operation
@@ -199,13 +211,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                error: "Not Found"
+                message: "Provider with NPI 1234567890 not found"
 
   /api/providers/filters:
     get:
       tags:
         - Providers
-      summary: Get filters
-      description: Get lists of available states and specialties for filtering
+      summary: Get available filters
+      description: |
+        Get lists of available states and specialties for filtering provider searches.
+        
+        Use the returned values with the search endpoint's state and specialty parameters.
       operationId: getProviderFilters
       responses:
         '200':
@@ -214,6 +232,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Filters'
+              example:
+                states: ["AL", "AK", "AZ", "AR", "CA", "CO"]
+                specialties: ["207R00000X", "207RC0000X", "207RA0000X"]
 
 components:
   schemas:
@@ -224,6 +245,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProviderSummary'
+          description: List of providers matching search criteria
         total:
           type: integer
           description: Total number of providers matching the search criteria
@@ -233,159 +255,199 @@ components:
         limit:
           type: integer
           description: Number of results per page
+      required:
+        - providers
+        - total
+        - page
+        - limit
 
     ProviderSummary:
       type: object
       properties:
         npi:
           type: string
-          description: National Provider Identifier
+          description: National Provider Identifier (10-digit number)
         provider_name:
           type: string
-          description: Full name of the provider
+          description: Full name of the provider for display purposes
         first_name:
           type: string
-          description: Provider's first name
+          nullable: true
+          description: Provider's first name (for individuals)
         last_name:
           type: string
-          description: Provider's last name
+          nullable: true
+          description: Provider's last name (for individuals)
         organization_name:
           type: string
-          description: Name of the organization (if applicable)
+          nullable: true
+          description: Name of the organization (for organizations)
         provider_type:
-          type: integer
-          description: Type of provider (1 = Individual, 2 = Organization)
+          type: string
+          nullable: true
+          description: Type of provider ("1" = Individual, "2" = Organization)
+        address:
+          $ref: '#/components/schemas/Address'
         phone:
           type: string
+          nullable: true
           description: Contact phone number
         status:
           type: string
-          description: Provider's status (A = Active, I = Inactive)
-        top_services:
-          type: array
-          items:
-            $ref: '#/components/schemas/MedicareService'
-          description: Top Medicare services (if requested)
+          nullable: true
+          description: Provider's status (A = Active, I = Inactive, D = Deactivated)
+      required:
+        - npi
+        - provider_name
+        - address
 
     Provider:
       allOf:
         - $ref: '#/components/schemas/ProviderSummary'
         - type: object
           properties:
-            address:
-              $ref: '#/components/schemas/Address'
             email:
               type: string
+              nullable: true
+              description: Email address
             direct_address:
               type: string
+              nullable: true
+              description: Direct secure messaging address
             fhir_endpoint:
               type: string
+              nullable: true
+              description: FHIR API endpoint URL
             enumeration_date:
               type: string
-              format: date
+              nullable: true
+              description: Date when NPI was assigned
             last_updated:
               type: string
-              format: date
+              nullable: true
+              description: Date when provider record was last updated
             taxonomies:
               type: array
               items:
                 $ref: '#/components/schemas/Taxonomy'
+              description: Provider specialties/taxonomies
             medicare:
               $ref: '#/components/schemas/MedicareData'
+              description: Medicare service information
 
     Address:
       type: object
       properties:
         line1:
           type: string
+          nullable: true
+          description: Street address line 1
         line2:
           type: string
+          nullable: true
+          description: Street address line 2
         city:
           type: string
+          nullable: true
+          description: City
         state:
           type: string
+          nullable: true
+          description: State code (2 characters)
         postal_code:
           type: string
+          nullable: true
+          description: Postal/ZIP code
         country_code:
           type: string
+          nullable: true
+          description: Country code (2 characters, e.g., US)
 
     Taxonomy:
       type: object
       properties:
         code:
           type: string
+          nullable: true
+          description: Taxonomy code
         description:
           type: string
+          nullable: true
+          description: Taxonomy description
         isPrimary:
           type: boolean
+          nullable: true
+          description: Whether this is the provider's primary specialty
         license:
           type: string
+          nullable: true
+          description: License number associated with this taxonomy
 
     MedicareData:
       type: object
       properties:
         summary:
           $ref: '#/components/schemas/MedicareSummary'
+          description: Summary of Medicare services and payments
         services:
           type: array
           items:
             $ref: '#/components/schemas/MedicareService'
+          description: Detailed Medicare service information
 
     MedicareSummary:
       type: object
       properties:
         totalServices:
-          type: integer
+          type: number
           description: Total number of Medicare services performed
-          example: 1000
         totalBeneficiaries:
-          type: integer
+          type: number
           description: Total number of Medicare patients treated
-          example: 500
         totalPayments:
           type: number
           description: Total Medicare payments received (in dollars)
-          example: 250000.00
         totalSubmitted:
           type: number
           description: Total amount billed to Medicare (in dollars)
-          example: 500000.00
         totalAllowed:
           type: number
           description: Total amount approved by Medicare (in dollars)
-          example: 300000.00
 
     MedicareService:
       type: object
       properties:
-        hcpcs_code:
+        code:
           type: string
-          description: The Medicare service code (HCPCS)
-          example: "99213"
-        hcpcs_description:
+          nullable: true
+          description: The Medicare service code (HCPCS/CPT)
+        description:
           type: string
+          nullable: true
           description: Description of the Medicare service
-          example: "Office or other outpatient visit for the evaluation and management of an established patient"
-        service_count:
-          type: integer
+        serviceCount:
+          type: number
           description: Number of times this service was performed
-          example: 150
-        beneficiary_count:
-          type: integer
+        beneficiaryCount:
+          type: number
           description: Number of Medicare patients who received this service
-          example: 120
-        submitted_charge:
+        submittedCharge:
           type: number
           description: Total amount billed for this service (in dollars)
-          example: 30000.00
-        allowed_amount:
+        allowedAmount:
           type: number
           description: Total amount approved by Medicare (in dollars)
-          example: 15000.00
-        payment_amount:
+        paymentAmount:
           type: number
           description: Total amount paid by Medicare (in dollars)
-          example: 12000.00
+        year:
+          type: number
+          nullable: true
+          description: Year of service
+        placeOfService:
+          type: string
+          nullable: true
+          description: Place of service code
 
     Filters:
       type: object
@@ -394,33 +456,25 @@ components:
           type: array
           items:
             type: string
+          description: List of available state codes
         specialties:
           type: array
           items:
-            $ref: '#/components/schemas/Specialty'
-
-    Specialty:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Taxonomy code
-        description:
-          type: string
-          description: Full description of the specialty
-        category:
-          type: string
-          description: Category of the specialty
-        classification:
-          type: string
-          description: Classification within the category
+            type: string
+          description: List of available specialty/taxonomy codes
+      required:
+        - states
+        - specialties
 
     Error:
       type: object
       properties:
-        statusCode:
-          type: integer
         error:
           type: string
+          description: Error type
         message:
-          type: string 
+          type: string
+          description: Detailed error message
+      required:
+        - error
+        - message 
