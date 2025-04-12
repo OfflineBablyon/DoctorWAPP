@@ -1,49 +1,78 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { providersRoutes } from './routes/providers.routes';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
+import { registerProviderRoutes } from './routes/providers.routes';
 
 const app = fastify({
-  logger: true,
-}).withTypeProvider<TypeBoxTypeProvider>();
+  logger: true
+});
 
-// Register plugins
+// Register CORS
 app.register(cors, {
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: true
+});
+
+// Register Swagger
+app.register(swagger, {
+  openapi: {
+    info: {
+      title: 'DoctorWAPP API',
+      description: 'API for searching and retrieving healthcare provider information',
+      version: '1.0.0'
+    },
+    servers: [
+      {
+        url: process.env.HOST || 'http://localhost:3000',
+        description: 'Development server'
+      }
+    ],
+    tags: [
+      { name: 'providers', description: 'Provider related endpoints' },
+      { name: 'health', description: 'Health check endpoint' }
+    ]
+  }
+});
+
+// Register Swagger UI
+app.register(swaggerUi, {
+  routePrefix: '/docs',
+  uiConfig: {
+    docExpansion: 'list',
+    deepLinking: false
+  }
 });
 
 // Register routes
-app.register(providersRoutes, { prefix: '/api/providers' });
+registerProviderRoutes(app);
 
 // Health check route
-app.get('/health', async () => {
+app.get('/health', {
+  schema: {
+    tags: ['health'],
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' }
+        }
+      }
+    }
+  }
+}, async () => {
   return { status: 'ok' };
 });
 
-// Error handler
-app.setErrorHandler((error, request, reply) => {
-  app.log.error(error);
-  reply.status(500).send({
-    error: 'Internal Server Error',
-    message: error.message,
-  });
-});
-
-// Start server
 const start = async () => {
   try {
-    await app.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server is running on http://localhost:3000');
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+    await app.listen({ port: port, host: '0.0.0.0' });
+    app.log.info(`Server listening on port ${port}`);
+    app.log.info(`Documentation available at http://localhost:${port}/docs`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
   }
 };
 
-start();
-
-export { app, prisma }; 
+start(); 

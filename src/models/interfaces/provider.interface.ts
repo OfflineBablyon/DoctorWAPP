@@ -4,18 +4,72 @@ export interface SearchParams {
   specialty?: string;
   page?: number;
   limit?: number;
+  minServiceCount?: number;
+  maxServiceCount?: number;
+  minPaymentAmount?: number;
+  maxPaymentAmount?: number;
+  hcpcsCode?: string;
+  serviceYear?: number;
+}
+
+export interface Address {
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+}
+
+export interface Taxonomy {
+  code: string | null;
+  description: string | null;
+  isPrimary: boolean | null;
+  license: string | null;
+}
+
+export interface MedicareService {
+  code: string | null;
+  description: string | null;
+  serviceCount: number;
+  beneficiaryCount: number;
+  submittedCharge: number;
+  allowedAmount: number;
+  paymentAmount: number;
+  year: number | null;
+  placeOfService: string | null;
+}
+
+export interface MedicareSummary {
+  totalServices: number;
+  totalBeneficiaries: number;
+  totalPayments: number;
+  totalSubmitted: number;
+  totalAllowed: number;
+}
+
+export interface Medicare {
+  summary: MedicareSummary;
+  services: MedicareService[];
 }
 
 export interface Provider {
-  id: string;
+  npi: string;
   provider_name: string;
-  first_name: string;
-  last_name: string;
-  organization_name: string;
-  state: string;
-  specialty: string;
-  created_at: Date;
-  updated_at: Date;
+  first_name: string | null;
+  last_name: string | null;
+  organization_name: string | null;
+  provider_type: string | null;
+  address: Address;
+  phone: string | null;
+  email: string | null;
+  direct_address: string | null;
+  fhir_endpoint: string | null;
+  enumeration_date: string | null;
+  last_updated: string | null;
+  status: string | null;
+  taxonomies: Taxonomy[];
+  medicare: Medicare;
 }
 
 export interface SearchResponse {
@@ -32,34 +86,30 @@ export interface FiltersResponse {
 
 export interface ProviderTaxonomy {
   id: number;
-  npi: string;
+  provider_id: number;
   taxonomy_code: string;
   taxonomy_desc: string | null;
   primary_taxonomy: boolean;
   license: string | null;
+  created_at: Date;
+  updated_at: Date;
+  taxonomy_reference?: TaxonomyReference;
 }
 
 export interface TaxonomyReference {
-  code: string;
-  description: string;
-  grouping: string;
-  classification: string;
-  specialization: string | null;
-  definition: string | null;
+  taxonomy_code: string;
+  taxonomy_desc: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
-export interface MedicareService {
+export interface ProviderMedicare {
   id: number;
-  npi: string;
-  hcpcs_code: string;
-  hcpcs_description: string;
-  service_count: number;
-  beneficiary_count: number;
-  submitted_charge: number;
-  allowed_amount: number;
-  payment_amount: number;
-  service_year: number;
-  place_of_service: string;
+  provider_id: number;
+  medicare_service_id: number;
+  created_at: Date;
+  updated_at: Date;
+  medicare_service?: MedicareService;
 }
 
 export interface ProviderSearchParams {
