@@ -10,6 +10,8 @@ export interface SearchParams {
   maxPaymentAmount?: number;
   hcpcsCode?: string;
   serviceYear?: number;
+  has_medicare?: boolean;
+  provider_type?: string;
 }
 
 export interface Address {
@@ -53,6 +55,7 @@ export interface Medicare {
   services: MedicareService[];
 }
 
+// Full provider with all details (used for provider details endpoint)
 export interface Provider {
   npi: string;
   provider_name: string;
@@ -72,8 +75,21 @@ export interface Provider {
   medicare: Medicare;
 }
 
+// Simplified provider for search results
+export interface ProviderSearchResult {
+  npi: string;
+  provider_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  organization_name: string | null;
+  provider_type: string | null;
+  address: Address;
+  phone: string | null;
+  status: string | null;
+}
+
 export interface SearchResponse {
-  providers: Provider[];
+  providers: ProviderSearchResult[];
   total: number;
   page: number;
   limit: number;

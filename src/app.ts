@@ -1,78 +1,110 @@
-import fastify from 'fastify';
-import cors from '@fastify/cors';
-import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
+import { fastify, FastifyInstance } from 'fastify';
+import fastifyCors from '@fastify/cors';
+import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUi from '@fastify/swagger-ui';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { registerProviderRoutes } from './routes/providers.routes';
+import { PrismaClient } from '@prisma/client';
 
-const app = fastify({
-  logger: true
-});
+const prisma = new PrismaClient();
 
-// Register CORS
-app.register(cors, {
-  origin: true
-});
-
-// Register Swagger
-app.register(swagger, {
-  openapi: {
-    info: {
-      title: 'DoctorWAPP API',
-      description: 'API for searching and retrieving healthcare provider information',
-      version: '1.0.0'
+export const buildApp = async (): Promise<FastifyInstance> => {
+  const app = fastify({
+    logger: {
+      level: process.env.LOG_LEVEL || 'info',
     },
-    servers: [
-      {
-        url: process.env.HOST || 'http://localhost:3000',
-        description: 'Development server'
-      }
-    ],
-    tags: [
-      { name: 'providers', description: 'Provider related endpoints' },
-      { name: 'health', description: 'Health check endpoint' }
-    ]
+  });
+
+  // Register CORS
+  await app.register(fastifyCors, {
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  });
+
+  // Register rate limiting in production
+  if (process.env.NODE_ENV === 'production') {
+    await app.register(fastifyRateLimit, {
+      max: 500, // 500 requests
+      timeWindow: '1 minute', // per minute
+      // Higher limits for API keys can be implemented when authentication is added
+    });
   }
-});
 
-// Register Swagger UI
-app.register(swaggerUi, {
-  routePrefix: '/docs',
-  uiConfig: {
-    docExpansion: 'list',
-    deepLinking: false
+  // Register Swagger if enabled
+  if (process.env.ENABLE_SWAGGER === 'true') {
+    await app.register(fastifySwagger, {
+      swagger: {
+        info: {
+          title: 'HealthProvider Data API',
+          description: 'Real-time healthcare provider data with search, filtering, and detailed Medicare information',
+          version: process.env.API_VERSION || 'v1',
+        },
+        schemes: ['http', 'https'],
+        consumes: ['application/json'],
+        produces: ['application/json'],
+      },
+    });
+
+    await app.register(fastifySwaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: true,
+      },
+    });
   }
-});
 
-// Register routes
-registerProviderRoutes(app);
+  // Register routes
+  registerProviderRoutes(app);
 
-// Health check route
-app.get('/health', {
-  schema: {
-    tags: ['health'],
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          status: { type: 'string' }
-        }
-      }
+  // Add enhanced health check route
+  app.get('/health', async (request, reply) => {
+    try {
+      // Check database connection
+      await prisma.$queryRaw`SELECT 1`;
+      
+      return { 
+        status: 'ok',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+        version: process.env.API_VERSION || 'v1'
+      };
+    } catch (error) {
+      request.log.error('Health check failed:', error);
+      reply.status(500);
+      return { 
+        status: 'error',
+        database: 'disconnected',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+        version: process.env.API_VERSION || 'v1'
+      };
     }
-  }
-}, async () => {
-  return { status: 'ok' };
-});
+  });
+
+  return app;
+};
 
 const start = async () => {
   try {
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+    const app = await buildApp();
     await app.listen({ port: port, host: '0.0.0.0' });
     app.log.info(`Server listening on port ${port}`);
-    app.log.info(`Documentation available at http://localhost:${port}/docs`);
+    if (process.env.ENABLE_SWAGGER === 'true') {
+      app.log.info(`Documentation available at http://localhost:${port}/docs`);
+    }
   } catch (err) {
-    app.log.error(err);
+    console.error(err);
     process.exit(1);
   }
 };
 
-start(); 
+// Start the server if this file is run directly
+if (require.main === module) {
+  start();
+}
+
+// Export for testing
+export { start }; 

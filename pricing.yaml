@@ -1,0 +1,93 @@
+plans:
+  free:
+    name: Free
+    price: 0.00
+    currency: USD
+    period: month
+    quota:
+      requests: 100
+      objects: 100
+    features:
+      - Basic provider search
+      - Limited provider details
+      - Basic filters
+      - Community support
+    visibility: public
+
+  basic:
+    name: Basic
+    price: 0.00
+    currency: USD
+    period: month
+    quota:
+      credits: 100
+      requests: 150
+      rate_limit: 5/minute
+    features:
+      - Provider search
+      - Basic provider details
+      - State and specialty filters
+      - Standard support
+    visibility: public
+
+  pro:
+    name: Pro
+    price: 45.00
+    currency: USD
+    period: month
+    quota:
+      credits: 4500
+      additional_credit_price: 0.012
+      requests: 6000
+      rate_limit: 20/minute
+    features:
+      - All Basic features
+      - Advanced search filters
+      - Detailed provider information
+      - Priority support
+      - API key management
+    visibility: public
+
+  ultra:
+    name: Ultra
+    price: 250.00
+    currency: USD
+    period: month
+    quota:
+      credits: 32000
+      additional_credit_price: 0.008
+      requests: 40000
+      rate_limit: 50/minute
+    features:
+      - All Pro features
+      - Custom data exports
+      - Dedicated support
+      - SLA guarantee
+      - Custom integrations
+    visibility: public
+
+  mega:
+    name: Mega
+    price: 1000.00
+    currency: USD
+    period: month
+    quota:
+      credits: 200000
+      additional_credit_price: 0.006
+      requests: 240000
+      rate_limit: 150/minute
+    features:
+      - All Ultra features
+      - Custom API endpoints
+      - On-premise deployment
+      - 24/7 support
+      - Custom data retention
+    visibility: public
+
+quota:
+  free_plan:
+    credits: 100
+    requests: 150
+    rate_limit: 5/minute
+    period: month
+    visibility: private 

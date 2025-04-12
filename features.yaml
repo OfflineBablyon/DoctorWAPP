@@ -1,0 +1,63 @@
+features:
+  provider_search:
+    name: Provider Search
+    description: Search for healthcare providers using various criteria including name, location, and specialty. Returns paginated results with provider summaries.
+    endpoints:
+      - /api/providers/search
+    plans:
+      - free
+      - basic
+      - pro
+      - ultra
+      - mega
+    parameters:
+      - name: query
+        type: string
+        description: Search term for provider name or organization
+      - name: state
+        type: string
+        description: Filter by state
+      - name: specialty
+        type: string
+        description: Filter by primary taxonomy code
+      - name: page
+        type: integer
+        description: Page number
+      - name: limit
+        type: integer
+        description: Number of results per page
+
+  provider_details:
+    name: Provider Details
+    description: Get comprehensive information about a specific healthcare provider, including contact details, practice information, taxonomy codes, and Medicare service data.
+    endpoints:
+      - /api/providers/{npi}
+    plans:
+      - basic
+      - pro
+      - ultra
+      - mega
+    parameters:
+      - name: npi
+        type: string
+        description: National Provider Identifier
+        required: true
+
+  provider_filters:
+    name: Provider Filters
+    description: Access lists of available states and specialties for filtering provider searches. Useful for building search interfaces and validating input.
+    endpoints:
+      - /api/providers/filters
+    plans:
+      - free
+      - basic
+      - pro
+      - ultra
+      - mega
+    response:
+      states:
+        type: array
+        description: List of available states
+      specialties:
+        type: array
+        description: List of available specialty codes 
